@@ -1,0 +1,5 @@
+- name: install packages
+  apt:
+    name:
+      - docker
+      - golang-cfssl

@@ -1,0 +1,14 @@
+- name: create user
+  user:
+    name: "{{ user }}"
+    shell: /bin/bash
+    group: sudo
+    state: present
+
+# TODO: split role
+- name: sync auth key
+  authorized_key:
+    user: "{{ user }}"
+    state: present
+    key: "{{ lookup('file', pub_key) }}"
+  when: pub_key is defined

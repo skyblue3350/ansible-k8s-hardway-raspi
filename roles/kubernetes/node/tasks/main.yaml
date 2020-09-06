@@ -1,0 +1,121 @@
+- name: create Certificate Authority
+  become: false
+  delegate_to: localhost
+  run_once: true
+  shell:
+    cmd: cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+    chdir: "{{ role_path }}/files"
+
+- name: create kubernetes config dir
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ kube_config_dir }}"
+    - "{{ kube_cert_dir }}"
+
+- name: copy ca file
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ kube_cert_dir }}/{{ item }}"
+  with_items:
+    - ca.pem
+    - ca-key.pem
+
+- name: copy cfssl configs
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ kube_cert_dir }}/{{ item }}"
+  with_items:
+    - admin-csr.json
+    - ca-config.json
+    - kube-controller-manager-csr.json
+    - kube-proxy-csr.json
+    - kube-scheduler-csr.json
+    - kubernetes-csr.json
+    - service-account-csr.json
+
+- name: create Admin Client Certificate
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes \
+        admin-csr.json | cfssljson -bare admin
+    chdir: "{{ kube_cert_dir }}"
+  when: "'k8s-master' in group_names"
+
+- name: copy kuebelet client certificate
+  template:
+    src: node-csr.json.j2
+    dest: "{{ kube_cert_dir }}/{{ ansible_host }}-csr.json"
+
+- name: create Kubelet Client Certificates
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -hostname={{ ansible_host }} \
+        -profile=kubernetes \
+        {{ ansible_host }}-csr.json | cfssljson -bare {{ ansible_host }}
+    chdir: "{{ kube_cert_dir }}"
+
+- name: create Controller Manager Client Certificate
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes \
+        kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
+    chdir: "{{ kube_cert_dir }}"
+
+- name: create Kube Proxy Client Certificate
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes \
+        kube-proxy-csr.json | cfssljson -bare kube-proxy
+    chdir: "{{ kube_cert_dir }}"
+
+- name: create Scheduler Client Certificate
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes \
+        kube-scheduler-csr.json | cfssljson -bare kube-scheduler-csr
+    chdir: "{{ kube_cert_dir }}"
+
+- name: create Kubernetes API Server Certificate
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -hostname={{ ansible_host }},127.0.0.1 \
+        -profile=kubernetes \
+        kubernetes-csr.json | cfssljson -bare kubernetes
+    chdir: "{{ kube_cert_dir }}"
+
+- name: create Service Account Key Pair
+  shell:
+    cmd: |
+      cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes \
+        service-account-csr.json | cfssljson -bare service-account
+    chdir: "{{ kube_cert_dir }}"

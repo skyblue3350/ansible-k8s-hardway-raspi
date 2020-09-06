@@ -1,0 +1,8 @@
+
+- hosts: all
+  roles:
+    - role: user/sudoers
+    - role: user/create
+      vars:
+        user: "{{ admin_user }}"
+        pub_key: ~/.ssh/id_rsa.pub

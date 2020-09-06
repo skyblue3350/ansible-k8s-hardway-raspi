@@ -1,0 +1,7 @@
+
+- hosts: all
+  roles:
+    - role: user/sudoers
+    - role: user/remove
+      vars:
+        user: "{{ remove_user }}"

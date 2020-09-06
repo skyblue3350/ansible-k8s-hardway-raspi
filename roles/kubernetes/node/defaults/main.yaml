@@ -1,0 +1,2 @@
+kube_config_dir: /etc/kubernetes
+kube_cert_dir: "{{ kube_config_dir }}/certs"
